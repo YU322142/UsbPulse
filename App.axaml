@@ -1,0 +1,27 @@
+<Application
+    x:Class="UsbPulse.App"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:fa="using:FluentAvalonia.Styling"
+    RequestedThemeVariant="Default">
+  <Application.Styles>
+    <fa:FluentAvaloniaTheme PreferSystemTheme="False" PreferUserAccentColor="False"
+                           TextVerticalAlignmentOverrideBehavior="AlwaysEnabled" />
+    <Style Selector="Window">
+      <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Microsoft YaHei, Noto Sans CJK SC, PingFang SC, sans-serif" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.tool">
+      <Setter Property="Width" Value="34" />
+      <Setter Property="Height" Value="34" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+  </Application.Styles>
+</Application>

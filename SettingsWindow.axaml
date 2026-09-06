@@ -1,0 +1,31 @@
+<Window x:Class="UsbPulse.SettingsWindow"
+        xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="using:FluentAvalonia.UI.Controls"
+        Title="UsbPulse · 外观设置" Width="440" SizeToContent="Height"
+        CanResize="False" WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+  <StackPanel Margin="24,20" Spacing="20">
+    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
+      <TextBlock Text="外观" FontSize="22" FontWeight="SemiBold" />
+      <fa:SymbolIcon Grid.Column="1" Symbol="ColorFill" FontSize="24"
+                     Foreground="{DynamicResource UsbAccentBrush}" />
+    </Grid>
+    <StackPanel Spacing="8">
+      <TextBlock Text="主题" FontWeight="SemiBold" />
+      <ComboBox x:Name="ThemeBox" HorizontalAlignment="Stretch" AutomationProperties.Name="主题">
+        <ComboBoxItem Content="跟随系统" />
+        <ComboBoxItem Content="浅色" />
+        <ComboBoxItem Content="深色" />
+      </ComboBox>
+    </StackPanel>
+    <StackPanel Spacing="12">
+      <TextBlock Text="强调色" FontWeight="SemiBold" />
+      <UniformGrid x:Name="Swatches" Columns="3" Rows="2" />
+    </StackPanel>
+    <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+    <ToggleSwitch x:Name="TopmostSwitch" Content="窗口置顶" OnContent="开启" OffContent="关闭"
+                  AutomationProperties.Name="窗口置顶" />
+    <fa:InfoBar x:Name="SettingsError" IsOpen="False" IsClosable="True" Severity="Error" />
+    <TextBlock Text="UsbPulse 0.2.0" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+  </StackPanel>
+</Window>

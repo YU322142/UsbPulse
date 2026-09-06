@@ -1,0 +1,71 @@
+<Window x:Class="UsbPulse.MainWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fa="using:FluentAvalonia.UI.Controls"
+        xmlns:models="using:UsbPulse.Models"
+        x:DataType="models:DeviceState"
+        Title="UsbPulse" Width="430" SizeToContent="Height"
+        CanResize="False" ShowInTaskbar="False" ShowActivated="False"
+        SystemDecorations="None" Topmost="False"
+        TransparencyLevelHint="Transparent" Background="Transparent">
+  <Border Margin="8" Padding="16,14,16,8" CornerRadius="8"
+          Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+          BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}" BorderThickness="1">
+    <StackPanel Spacing="10">
+      <Grid ColumnDefinitions="48,*,34,34" ColumnSpacing="6">
+        <Border Width="44" Height="50" CornerRadius="6"
+                Background="{DynamicResource UsbAccentSoftBrush}" VerticalAlignment="Center">
+          <fa:SymbolIcon Symbol="MapDrive" FontSize="30" Foreground="{DynamicResource UsbAccentBrush}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Heading}" FontSize="13"
+                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+          <TextBlock Text="{Binding Detail}" FontSize="17" FontWeight="SemiBold"
+                     TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Detail}" />
+          <TextBlock Text="{Binding Capacity}" FontSize="11"
+                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        </StackPanel>
+        <Button Grid.Column="2" Classes="tool" Click="RefreshClick" IsEnabled="{Binding !Busy}"
+                ToolTip.Tip="刷新设备" AutomationProperties.Name="刷新设备" VerticalAlignment="Top">
+          <fa:SymbolIcon Symbol="Refresh" FontSize="18" />
+        </Button>
+        <Button Grid.Column="3" Classes="tool" Click="SettingsClick"
+                ToolTip.Tip="外观设置" AutomationProperties.Name="外观设置" VerticalAlignment="Top">
+          <fa:SymbolIcon Symbol="Settings" FontSize="18" />
+        </Button>
+      </Grid>
+      <ComboBox ItemsSource="{Binding Devices}" SelectedItem="{Binding Selected, Mode=TwoWay}"
+                IsVisible="{Binding HasMultiple}" IsEnabled="{Binding !Busy}" HorizontalAlignment="Stretch"
+                AutomationProperties.Name="选择存储设备">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="models:StorageDevice">
+            <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <fa:InfoBar IsOpen="{Binding HasMessage}" IsClosable="False" Severity="Warning"
+                  Message="{Binding Message}" />
+      <ProgressBar Height="2" Minimum="0" Maximum="1" Value="1"
+                   IsIndeterminate="{Binding Busy}" Foreground="{DynamicResource UsbAccentBrush}" />
+      <Grid ColumnDefinitions="*,1,*" Height="42">
+        <Button Grid.Column="0" Click="EjectClick" IsEnabled="{Binding CanEject}"
+                HorizontalAlignment="Stretch" Background="Transparent" BorderThickness="0">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <PathIcon Width="20" Height="20" VerticalAlignment="Center"
+                      Data="M3,19 L21,19 L21,17 L3,17 Z M12,2 L5.5,12 L9.5,12 L9.5,15 L14.5,15 L14.5,12 L18.5,12 Z" />
+            <TextBlock Text="弹出" FontSize="16" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Border Grid.Column="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="0,6" />
+        <Button Grid.Column="2" Click="OpenClick" IsEnabled="{Binding CanOpen}"
+                HorizontalAlignment="Stretch" Background="Transparent" BorderThickness="0">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <fa:SymbolIcon Symbol="OpenFolder" FontSize="20" VerticalAlignment="Center" />
+            <TextBlock Text="打开" FontSize="16" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </StackPanel>
+  </Border>
+</Window>

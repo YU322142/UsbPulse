@@ -1,0 +1,225 @@
+name: Build UsbPulse
+
+on:
+  push:
+    branches: [ "master", "main", "dev", "portable" ]
+    tags: [ "*" ]
+  workflow_dispatch:
+
+env:
+  APP_NAME: UsbPulse
+  PROJECT_PATH: UsbPulse.csproj
+  CLASSISLAND_LOONGARCH_BASE: https://raw.githubusercontent.com/YU322142/ClassIsland/1ae236c695af51ec6763e17d5ee41e7bf52c7c27
+  CLASSISLAND_SKIA_SHA256: 7306362ff3d589544e80825355e6a6ab65eb407461f81c16c13794e9fae5d32e
+  CLASSISLAND_HARFBUZZ_SHA256: 6fabf20bd61106096eb29465b9700695fb756229240246cf25ca5d00a731cbe4
+  LOONGNIX_DOTNET_BASE: https://ftp.loongnix.cn/dotnet/8.0.25/8.0.25-1/pkg
+  LOONGARCH_DOTNET_RUNTIME_ARCHIVE: dotnet-runtime-8.0.25-linux-loongarch64.tar.xz
+  LOONGARCH_DOTNET_RUNTIME_SHA256: 195f62756b9720828adddee8e6725577dfd34908eb69895092f29343fa08d3f4
+
+jobs:
+  test:
+    name: Test net8.0
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: "8.0.421"
+      - run: dotnet test tests/UsbPulse.Tests/UsbPulse.Tests.csproj -c Release
+
+  build-portable:
+    name: Build portable net8.0
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: "8.0.421"
+      - name: Publish portable package
+        run: |
+          dotnet publish "$PROJECT_PATH" -c Release --no-self-contained \
+            -p:UseAppHost=false -p:PublishDir=output/portable/$APP_NAME \
+            -p:PublishSingleFile=false -p:PublishTrimmed=false \
+            -p:DebugType=none -p:DebugSymbols=false
+      - name: Create archive
+        run: |
+          artifact="${APP_NAME}-portable-net8.0"
+          mkdir -p "artifacts/$artifact"
+          cp -a "output/portable/$APP_NAME" "artifacts/$artifact/"
+          (cd artifacts && zip -r "../$artifact.zip" "$artifact")
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: UsbPulse-portable-net8.0
+          path: UsbPulse-portable-net8.0.zip
+
+  build-self-contained:
+    name: Build ${{ matrix.rid }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: win-x64, package_ext: zip }
+          - { rid: win-x86, package_ext: zip }
+          - { rid: win-arm64, package_ext: zip }
+          - { rid: linux-x64, package_ext: tar.gz }
+          - { rid: linux-arm64, package_ext: tar.gz }
+          - { rid: linux-arm, package_ext: tar.gz }
+          - { rid: linux-musl-x64, package_ext: tar.gz }
+          - { rid: linux-musl-arm64, package_ext: tar.gz }
+          - { rid: osx-x64, package_ext: tar.gz }
+          - { rid: osx-arm64, package_ext: tar.gz }
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: "8.0.421"
+      - name: Publish ${{ matrix.rid }}
+        run: |
+          dotnet publish "$PROJECT_PATH" -c Release -r "${{ matrix.rid }}" \
+            --self-contained true -p:PublishDir="output/${{ matrix.rid }}/$APP_NAME" \
+            -p:PublishSingleFile=false -p:PublishTrimmed=false \
+            -p:DebugType=none -p:DebugSymbols=false
+      - name: Create package
+        run: |
+          rid="${{ matrix.rid }}"
+          ext="${{ matrix.package_ext }}"
+          artifact="${APP_NAME}-${rid}"
+          mkdir -p "artifacts/$artifact"
+          cp -a "output/$rid/$APP_NAME" "artifacts/$artifact/"
+          if [[ "$ext" == "zip" ]]; then
+            (cd artifacts && zip -r "../$artifact.zip" "$artifact")
+          else
+            chmod +x "artifacts/$artifact/$APP_NAME/$APP_NAME" 2>/dev/null || true
+            (cd artifacts && tar -czf "../$artifact.tar.gz" "$artifact")
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: UsbPulse-${{ matrix.rid }}
+          path: UsbPulse-${{ matrix.rid }}.*
+
+  build-loongarch:
+    name: Build linux-loongarch64 Old World ABI 1.0
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: "8.0.421"
+      - name: Download pinned LoongArch runtime and native libraries
+        run: |
+          set -euo pipefail
+          mkdir -p native runtime
+          curl --fail --location --retry 5 "$CLASSISLAND_LOONGARCH_BASE/LoongArch-NativeLibs/libSkiaSharp.so" -o native/libSkiaSharp.so
+          curl --fail --location --retry 5 "$CLASSISLAND_LOONGARCH_BASE/LoongArch-NativeLibs/libHarfBuzzSharp.so" -o native/libHarfBuzzSharp.so
+          curl --fail --location --retry 5 "$LOONGNIX_DOTNET_BASE/$LOONGARCH_DOTNET_RUNTIME_ARCHIVE" -o "runtime/$LOONGARCH_DOTNET_RUNTIME_ARCHIVE"
+          printf '%s  %s\n' "$CLASSISLAND_SKIA_SHA256" native/libSkiaSharp.so | sha256sum -c -
+          printf '%s  %s\n' "$CLASSISLAND_HARFBUZZ_SHA256" native/libHarfBuzzSharp.so | sha256sum -c -
+          printf '%s  %s\n' "$LOONGARCH_DOTNET_RUNTIME_SHA256" "runtime/$LOONGARCH_DOTNET_RUNTIME_ARCHIVE" | sha256sum -c -
+      - name: Publish portable application
+        run: |
+          dotnet publish "$PROJECT_PATH" -c Release --no-self-contained \
+            -p:UseAppHost=false -p:PublishPlatform=linux -p:Platforms_Linux=true \
+            -p:TrimAssets=false -p:PublishDir=output/linux-loongarch64/$APP_NAME \
+            -p:PublishSingleFile=false -p:PublishTrimmed=false \
+            -p:DebugType=none -p:DebugSymbols=false
+      - name: Inject runtime and native libraries
+        run: |
+          set -euo pipefail
+          app="output/linux-loongarch64/$APP_NAME"
+          mkdir -p "$app/runtimes/linux-loongarch64/native"
+          install -m 755 native/libSkiaSharp.so "$app/runtimes/linux-loongarch64/native/libSkiaSharp.so"
+          install -m 755 native/libHarfBuzzSharp.so "$app/runtimes/linux-loongarch64/native/libHarfBuzzSharp.so"
+          tar -xf "runtime/$LOONGARCH_DOTNET_RUNTIME_ARCHIVE" -C "$app"
+          chmod +x "$app/dotnet"
+          test -f "$app/UsbPulse.dll"
+          test -f "$app/runtimes/linux-loongarch64/native/libSkiaSharp.so"
+      - name: Create LoongArch package
+        run: |
+          set -euo pipefail
+          artifact="${APP_NAME}-linux-loongarch64-oldworld-abi1.0"
+          root="artifacts/$artifact"
+          mkdir -p "$root"
+          cp -a "output/linux-loongarch64/$APP_NAME" "$root/"
+          cat > "$root/run.sh" << 'SCRIPT'
+          #!/usr/bin/env bash
+          set -e
+          here="$(cd "$(dirname "$0")" && pwd)"
+          app="$here/UsbPulse"
+          export DOTNET_ROOT="$app"
+          export PATH="$DOTNET_ROOT:$PATH"
+          export LD_LIBRARY_PATH="$app/runtimes/linux-loongarch64/native:${LD_LIBRARY_PATH:-}"
+          export AVALONIA_RENDERING_FORCE_SOFTWARE="${AVALONIA_RENDERING_FORCE_SOFTWARE:-1}"
+          export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
+          cd "$app"
+          exec ./dotnet UsbPulse.dll "$@"
+          SCRIPT
+          chmod +x "$root/run.sh"
+          (cd artifacts && tar -czf "../$artifact.tar.gz" "$artifact")
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: UsbPulse-linux-loongarch64-oldworld-abi1.0
+          path: UsbPulse-linux-loongarch64-oldworld-abi1.0.tar.gz
+
+  package-all-platforms:
+    name: Package all platforms
+    runs-on: ubuntu-latest
+    needs: [ test, build-portable, build-self-contained, build-loongarch ]
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          path: downloaded-artifacts
+      - name: Assemble checksummed bundle
+        run: |
+          set -euo pipefail
+          bundle="release-bundle/${APP_NAME}-all-platforms"
+          mkdir -p "$bundle"
+          find downloaded-artifacts -type f \( -name '*.zip' -o -name '*.tar.gz' \) -exec cp {} "$bundle/" \;
+          (cd "$bundle" && sha256sum *.zip *.tar.gz > SHA256SUMS.txt)
+          (cd release-bundle && zip -r "../${APP_NAME}-all-platforms.zip" "${APP_NAME}-all-platforms")
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: UsbPulse-all-platforms
+          path: UsbPulse-all-platforms.zip
+
+  create-release:
+    name: Create draft release for tags
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    needs: [ package-all-platforms ]
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: UsbPulse-all-platforms
+          path: release-input
+      - run: unzip -q "release-input/${APP_NAME}-all-platforms.zip" -d release-input/unpacked
+      - uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
+        with:
+          draft: true
+          files: |
+            release-input/unpacked/${{ env.APP_NAME }}-all-platforms/*.zip
+            release-input/unpacked/${{ env.APP_NAME }}-all-platforms/*.tar.gz
+            release-input/unpacked/${{ env.APP_NAME }}-all-platforms/SHA256SUMS.txt
+          fail_on_unmatched_files: true
