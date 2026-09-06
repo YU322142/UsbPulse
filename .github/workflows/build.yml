@@ -24,10 +24,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
         with:
           dotnet-version: "8.0.421"
       - name: Validate release tag
@@ -49,10 +49,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
         with:
           dotnet-version: "8.0.421"
       - name: Publish portable package
@@ -67,7 +67,7 @@ jobs:
           mkdir -p "artifacts/$artifact"
           cp -a "output/portable/$APP_NAME" "artifacts/$artifact/"
           (cd artifacts && zip -r "../$artifact.zip" "$artifact")
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: UsbPulse-portable-net8.0
           path: UsbPulse-portable-net8.0.zip
@@ -93,10 +93,10 @@ jobs:
           - { rid: osx-x64, package_ext: tar.gz }
           - { rid: osx-arm64, package_ext: tar.gz }
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
         with:
           dotnet-version: "8.0.421"
       - name: Publish ${{ matrix.rid }}
@@ -118,7 +118,7 @@ jobs:
             chmod +x "artifacts/$artifact/$APP_NAME/$APP_NAME" 2>/dev/null || true
             (cd artifacts && tar -czf "../$artifact.tar.gz" "$artifact")
           fi
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: UsbPulse-${{ matrix.rid }}
           path: UsbPulse-${{ matrix.rid }}.*
@@ -131,10 +131,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
         with:
           dotnet-version: "8.0.421"
       - name: Download pinned LoongArch runtime and native libraries
@@ -192,7 +192,7 @@ jobs:
           SCRIPT
           chmod +x "$root/run.sh"
           (cd artifacts && tar -czf "../$artifact.tar.gz" "$artifact")
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: UsbPulse-linux-loongarch64-oldworld-abi1.0
           path: UsbPulse-linux-loongarch64-oldworld-abi1.0.tar.gz
@@ -207,7 +207,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: downloaded-artifacts
       - name: Assemble checksummed bundle
@@ -238,7 +238,7 @@ jobs:
           done
           (cd "$bundle" && sha256sum "${expected[@]}" > SHA256SUMS.txt)
           (cd release-bundle && zip -r "../${APP_NAME}-all-platforms.zip" "${APP_NAME}-all-platforms")
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: UsbPulse-all-platforms
           path: UsbPulse-all-platforms.zip
@@ -253,12 +253,12 @@ jobs:
       contents: write
       actions: read
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: UsbPulse-all-platforms
           path: release-input
       - run: unzip -q "release-input/${APP_NAME}-all-platforms.zip" -d release-input/unpacked
-      - uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64
         with:
           draft: true
           files: |
