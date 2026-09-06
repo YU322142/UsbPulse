@@ -4,6 +4,7 @@ on:
   push:
     branches: [ "master", "main", "dev", "portable" ]
     tags: [ "*" ]
+  pull_request:
   workflow_dispatch:
 
 env:
@@ -29,10 +30,21 @@ jobs:
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
         with:
           dotnet-version: "8.0.421"
+      - name: Validate release tag
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          version="$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' "$PROJECT_PATH" | head -n 1)"
+          test -n "$version"
+          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME must match project version v$version"
+            exit 1
+          fi
       - run: dotnet test tests/UsbPulse.Tests/UsbPulse.Tests.csproj -c Release
 
   build-portable:
     name: Build portable net8.0
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -59,9 +71,11 @@ jobs:
         with:
           name: UsbPulse-portable-net8.0
           path: UsbPulse-portable-net8.0.zip
+          if-no-files-found: error
 
   build-self-contained:
     name: Build ${{ matrix.rid }}
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -76,7 +90,6 @@ jobs:
           - { rid: linux-arm64, package_ext: tar.gz }
           - { rid: linux-arm, package_ext: tar.gz }
           - { rid: linux-musl-x64, package_ext: tar.gz }
-          - { rid: linux-musl-arm64, package_ext: tar.gz }
           - { rid: osx-x64, package_ext: tar.gz }
           - { rid: osx-arm64, package_ext: tar.gz }
     steps:
@@ -109,9 +122,11 @@ jobs:
         with:
           name: UsbPulse-${{ matrix.rid }}
           path: UsbPulse-${{ matrix.rid }}.*
+          if-no-files-found: error
 
   build-loongarch:
     name: Build linux-loongarch64 Old World ABI 1.0
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -135,8 +150,7 @@ jobs:
       - name: Publish portable application
         run: |
           dotnet publish "$PROJECT_PATH" -c Release --no-self-contained \
-            -p:UseAppHost=false -p:PublishPlatform=linux -p:Platforms_Linux=true \
-            -p:TrimAssets=false -p:PublishDir=output/linux-loongarch64/$APP_NAME \
+            -p:UseAppHost=false -p:PublishDir=output/linux-loongarch64/$APP_NAME \
             -p:PublishSingleFile=false -p:PublishTrimmed=false \
             -p:DebugType=none -p:DebugSymbols=false
       - name: Inject runtime and native libraries
@@ -150,6 +164,12 @@ jobs:
           chmod +x "$app/dotnet"
           test -f "$app/UsbPulse.dll"
           test -f "$app/runtimes/linux-loongarch64/native/libSkiaSharp.so"
+          for binary in "$app/dotnet" \
+            "$app/runtimes/linux-loongarch64/native/libSkiaSharp.so" \
+            "$app/runtimes/linux-loongarch64/native/libHarfBuzzSharp.so"; do
+            file "$binary"
+            readelf -h "$binary" | grep -Eq 'Machine:[[:space:]]+LoongArch'
+          done
       - name: Create LoongArch package
         run: |
           set -euo pipefail
@@ -176,9 +196,11 @@ jobs:
         with:
           name: UsbPulse-linux-loongarch64-oldworld-abi1.0
           path: UsbPulse-linux-loongarch64-oldworld-abi1.0.tar.gz
+          if-no-files-found: error
 
   package-all-platforms:
     name: Package all platforms
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     needs: [ test, build-portable, build-self-contained, build-loongarch ]
     permissions:
@@ -193,13 +215,34 @@ jobs:
           set -euo pipefail
           bundle="release-bundle/${APP_NAME}-all-platforms"
           mkdir -p "$bundle"
-          find downloaded-artifacts -type f \( -name '*.zip' -o -name '*.tar.gz' \) -exec cp {} "$bundle/" \;
-          (cd "$bundle" && sha256sum *.zip *.tar.gz > SHA256SUMS.txt)
+          expected=(
+            UsbPulse-portable-net8.0.zip
+            UsbPulse-win-x64.zip
+            UsbPulse-win-x86.zip
+            UsbPulse-win-arm64.zip
+            UsbPulse-linux-x64.tar.gz
+            UsbPulse-linux-arm64.tar.gz
+            UsbPulse-linux-arm.tar.gz
+            UsbPulse-linux-musl-x64.tar.gz
+            UsbPulse-osx-x64.tar.gz
+            UsbPulse-osx-arm64.tar.gz
+            UsbPulse-linux-loongarch64-oldworld-abi1.0.tar.gz
+          )
+          for file in "${expected[@]}"; do
+            source="$(find downloaded-artifacts -type f -name "$file" -print -quit)"
+            if [[ -z "$source" ]]; then
+              echo "::error::Missing expected package: $file"
+              exit 1
+            fi
+            cp "$source" "$bundle/$file"
+          done
+          (cd "$bundle" && sha256sum "${expected[@]}" > SHA256SUMS.txt)
           (cd release-bundle && zip -r "../${APP_NAME}-all-platforms.zip" "${APP_NAME}-all-platforms")
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: UsbPulse-all-platforms
           path: UsbPulse-all-platforms.zip
+          if-no-files-found: error
 
   create-release:
     name: Create draft release for tags

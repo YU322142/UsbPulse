@@ -19,10 +19,23 @@ public sealed class DeviceState : INotifyPropertyChanged
     public StorageDevice? Selected
     {
         get => _selected;
-        set { _selected = value; NotifyAll(); }
+        set
+        {
+            if (_selected == value) return;
+            _selected = value;
+            NotifyAll();
+        }
     }
-    public bool Busy { get => _busy; set { _busy = value; NotifyAll(); } }
-    public string Message { get => _message; set { _message = value; NotifyAll(); } }
+    public bool Busy
+    {
+        get => _busy;
+        set { if (_busy != value) { _busy = value; NotifyAll(); } }
+    }
+    public string Message
+    {
+        get => _message;
+        set { if (_message != value) { _message = value; NotifyAll(); } }
+    }
     public bool HasMessage => Message.Length > 0;
     public bool HasDevice => Selected is not null;
     public bool HasMultiple => Devices.Count > 1;
@@ -41,9 +54,11 @@ public sealed class DeviceState : INotifyPropertyChanged
     public bool Apply(IReadOnlyList<StorageDevice> devices)
     {
         var inserted = devices.FirstOrDefault(d => !_devices.Any(old => old.Id == d.Id));
-        _selected = inserted ?? devices.FirstOrDefault(d => d.Id == Selected?.Id) ?? devices.FirstOrDefault();
+        var selected = inserted ?? devices.FirstOrDefault(d => d.Id == Selected?.Id) ?? devices.FirstOrDefault();
+        var changed = _selected != selected || !_devices.SequenceEqual(devices);
+        _selected = selected;
         _devices = devices;
-        NotifyAll();
+        if (changed) NotifyAll();
         return inserted is not null;
     }
 

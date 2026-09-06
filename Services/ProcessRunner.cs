@@ -8,8 +8,10 @@ public static class ProcessRunner
     {
         var info = new ProcessStartInfo(file)
         {
-            UseShellExecute = false, CreateNoWindow = true,
-            RedirectStandardOutput = true, RedirectStandardError = true
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
         };
         foreach (var arg in args) info.ArgumentList.Add(arg);
         info.Environment["LC_ALL"] = "C";

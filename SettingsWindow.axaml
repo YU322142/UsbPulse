@@ -25,6 +25,20 @@
     <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
     <ToggleSwitch x:Name="TopmostSwitch" Content="窗口置顶" OnContent="开启" OffContent="关闭"
                   AutomationProperties.Name="窗口置顶" />
+    <StackPanel x:Name="WindowsEffectsPanel" Spacing="12">
+      <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+      <TextBlock Text="Windows 渲染" FontWeight="SemiBold" />
+      <ToggleSwitch x:Name="AcrylicSwitch" Content="亚克力背景" OnContent="开启" OffContent="关闭"
+                    AutomationProperties.Name="亚克力背景" />
+      <ToggleSwitch x:Name="HighRefreshSwitch" Content="高刷新率合成" OnContent="开启" OffContent="关闭"
+                    AutomationProperties.Name="高刷新率合成" />
+    </StackPanel>
+    <fa:InfoBar x:Name="RestartInfo" IsOpen="False" IsClosable="False" Severity="Informational"
+                Message="渲染设置将在重启后生效。">
+      <fa:InfoBar.ActionButton>
+        <Button Content="立即重启" Click="RestartClick" />
+      </fa:InfoBar.ActionButton>
+    </fa:InfoBar>
     <fa:InfoBar x:Name="SettingsError" IsOpen="False" IsClosable="True" Severity="Error" />
     <TextBlock Text="UsbPulse 0.2.0" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
   </StackPanel>

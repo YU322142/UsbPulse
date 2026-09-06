@@ -6,7 +6,12 @@ using FluentAvalonia.Styling;
 
 namespace UsbPulse.Services;
 
-public sealed record AppearanceSettings(string Theme = "System", string Accent = "Ocean", bool AlwaysOnTop = false);
+public sealed record AppearanceSettings(
+    string Theme = "System",
+    string Accent = "Ocean",
+    bool AlwaysOnTop = false,
+    bool UseAcrylic = false,
+    bool HighRefreshRate = false);
 public sealed record AccentPalette(string Id, string Name, string Light, string Dark);
 
 public sealed class AppearanceService
@@ -58,7 +63,9 @@ public sealed class AppearanceService
     {
         _app.RequestedThemeVariant = Settings.Theme switch
         {
-            "Light" => ThemeVariant.Light, "Dark" => ThemeVariant.Dark, _ => ThemeVariant.Default
+            "Light" => ThemeVariant.Light,
+            "Dark" => ThemeVariant.Dark,
+            _ => ThemeVariant.Default
         };
         UpdateAccent();
     }

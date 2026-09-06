@@ -79,7 +79,8 @@ public sealed class StorageService
         var info = new ProcessStartInfo
         {
             FileName = OperatingSystem.IsWindows() ? "explorer.exe" : OperatingSystem.IsMacOS() ? "open" : "xdg-open",
-            UseShellExecute = false, CreateNoWindow = true
+            UseShellExecute = false,
+            CreateNoWindow = true
         };
         info.ArgumentList.Add(device.MountPath);
         Process.Start(info)?.Dispose();
@@ -135,7 +136,8 @@ public sealed class StorageService
                 foreach (var obj in new[] { item, computer, shell })
                     if (obj is not null && Marshal.IsComObject(obj)) Marshal.FinalReleaseComObject(obj);
             }
-        }) { IsBackground = true, Name = "UsbPulse safe eject" };
+        })
+        { IsBackground = true, Name = "UsbPulse safe eject" };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         return completion.Task;

@@ -52,8 +52,10 @@ public partial class App : Application
         using var stream = AssetLoader.Open(new Uri("avares://UsbPulse/Assets/UsbPulse.ico"));
         _trayIcon = new TrayIcon
         {
-            Icon = new WindowIcon(stream), ToolTipText = "UsbPulse · U 盘助手",
-            Menu = menu, IsVisible = true
+            Icon = new WindowIcon(stream),
+            ToolTipText = "UsbPulse · U 盘助手",
+            Menu = menu,
+            IsVisible = true
         };
         _trayIcon.Clicked += (_, _) => _mainWindow?.ShowCard(true);
         _appearance!.Changed += (_, _) => UpdateTrayIcon();

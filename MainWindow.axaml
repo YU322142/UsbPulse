@@ -8,7 +8,7 @@
         CanResize="False" ShowInTaskbar="False" ShowActivated="False"
         SystemDecorations="None" Topmost="False"
         TransparencyLevelHint="Transparent" Background="Transparent">
-  <Border Margin="8" Padding="16,14,16,8" CornerRadius="8"
+  <Border x:Name="RootCard" Margin="8" Padding="16,14,16,8" CornerRadius="8"
           Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
           BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}" BorderThickness="1">
     <StackPanel Spacing="10">
@@ -46,8 +46,11 @@
       </ComboBox>
       <fa:InfoBar IsOpen="{Binding HasMessage}" IsClosable="False" Severity="Warning"
                   Message="{Binding Message}" />
-      <ProgressBar Height="2" Minimum="0" Maximum="1" Value="1"
-                   IsIndeterminate="{Binding Busy}" Foreground="{DynamicResource UsbAccentBrush}" />
+      <Grid Height="2">
+        <Border Background="{DynamicResource UsbAccentBrush}" />
+        <ProgressBar IsVisible="{Binding Busy}" IsIndeterminate="True"
+                     Foreground="{DynamicResource UsbAccentBrush}" />
+      </Grid>
       <Grid ColumnDefinitions="*,1,*" Height="42">
         <Button Grid.Column="0" Click="EjectClick" IsEnabled="{Binding CanEject}"
                 HorizontalAlignment="Stretch" Background="Transparent" BorderThickness="0">

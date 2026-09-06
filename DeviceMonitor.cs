@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using UsbPulse.Services;
 
@@ -34,10 +35,19 @@ public sealed class DeviceMonitor : IDisposable
 
     private IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        // Volume broadcasts reach top-level windows without WMI or a recurring timer.
-        if (msg == 0x0219 && ((long)wParam is 0x8000 or 0x8004 or 0x0007))
+        // Ignore DBT_DEVNODES_CHANGED: it also fires for Bluetooth, virtual and
+        // other unrelated devices. Volume arrival/removal broadcasts contain a
+        // DEV_BROADCAST_VOLUME header whose device type is DBT_DEVTYP_VOLUME.
+        if (msg == 0x0219 && ((long)wParam is 0x8000 or 0x8004) && IsVolumeBroadcast(lParam))
             Changed?.Invoke(this, EventArgs.Empty);
         return IntPtr.Zero;
+    }
+
+    private static bool IsVolumeBroadcast(IntPtr data)
+    {
+        if (data == IntPtr.Zero) return false;
+        var size = Marshal.ReadInt32(data);
+        return size >= 12 && Marshal.ReadInt32(data, 4) == 2;
     }
 
     private void StartLinux()

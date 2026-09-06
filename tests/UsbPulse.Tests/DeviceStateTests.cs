@@ -34,4 +34,19 @@ public sealed class DeviceStateTests
         Assert.Equal(first, state.Selected);
         Assert.False(state.HasMultiple);
     }
+
+    [Fact]
+    public void Apply_DoesNotNotifyWhenSnapshotIsUnchanged()
+    {
+        var state = new DeviceState();
+        var device = new StorageDevice("D:\\", "USB", "D:\\", "D:\\");
+        state.Apply([device]);
+        var notifications = 0;
+        state.PropertyChanged += (_, _) => notifications++;
+
+        var inserted = state.Apply([device]);
+
+        Assert.False(inserted);
+        Assert.Equal(0, notifications);
+    }
 }

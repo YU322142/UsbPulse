@@ -7,6 +7,8 @@
 - Windows 使用 `WM_DEVICECHANGE`，Linux 使用 UDisks2 事件监听，空闲时不轮询盘符。
 - 多设备时显示设备选择框，新接入的设备会自动选中并恢复窗口显示。
 - 支持跟随系统、浅色、深色主题和六种强调色。
+- Windows 默认使用低功耗渲染，也可在设置中启用亚克力背景和高刷新率合成。
+- macOS 构建目前为实验性版本，支持打开和弹出，但自动检测尚未接入系统事件。
 
 ## 本地运行
 
@@ -24,6 +26,7 @@ dotnet publish -c Release -r osx-arm64 --self-contained true
 ```
 
 LoongArch 的专用构建流程见 `.github/workflows/build.yml`，按参考项目下载 LoongNix .NET 8 运行时并注入 Avalonia 原生库。
+Alpine 提供 `linux-musl-x64`；上游 SkiaSharp 暂无可验证的 `linux-musl-arm64` 原生库，因此不发布可能无法启动的伪兼容包。
 
 ## 开源许可
 

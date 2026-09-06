@@ -3,6 +3,8 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using UsbPulse.Models;
 using UsbPulse.Services;
@@ -17,6 +19,7 @@ public partial class MainWindow : Window, IDisposable
     private readonly DeviceState _state = new();
     private readonly EventRefresh _refresh;
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly bool _acrylicAtStartup;
     private bool _disposed;
     public event EventHandler? SettingsRequested;
 
@@ -24,6 +27,8 @@ public partial class MainWindow : Window, IDisposable
     {
         _appearance = appearance;
         InitializeComponent();
+        _acrylicAtStartup = OperatingSystem.IsWindows() && Program.StartupSettings.UseAcrylic;
+        ApplyWindowEffects();
         DataContext = _state;
         _refresh = new EventRefresh(ScanAsync);
         Topmost = appearance.Settings.AlwaysOnTop;
@@ -129,7 +134,16 @@ public partial class MainWindow : Window, IDisposable
     private void AppearanceChanged(object? sender, EventArgs e)
     {
         Topmost = _appearance.Settings.AlwaysOnTop;
+        ApplyWindowEffects();
         LowerIfNeeded();
+    }
+
+    private void ApplyWindowEffects()
+    {
+        if (!_acrylicAtStartup) return;
+        TransparencyLevelHint = [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Transparent];
+        var dark = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+        RootCard.Background = new SolidColorBrush(Color.Parse(dark ? "#D9262626" : "#E6F7F7F7"));
     }
 
     private void ScreensChanged(object? sender, EventArgs e) => PositionBottomRight();
