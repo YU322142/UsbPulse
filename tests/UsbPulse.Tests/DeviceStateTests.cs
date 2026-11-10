@@ -17,7 +17,7 @@ public sealed class DeviceStateTests
 
         Assert.Equal(second, state.Selected);
         Assert.True(state.HasMultiple);
-        Assert.Equal("已连接 2 个存储设备", state.Heading);
+        Assert.Equal(second.DisplayName, state.Detail);
     }
 
     [Fact]
@@ -33,6 +33,23 @@ public sealed class DeviceStateTests
 
         Assert.Equal(first, state.Selected);
         Assert.False(state.HasMultiple);
+    }
+
+    [Fact]
+    public void Apply_KeepsNewDeviceWhenItemsBindingReportsThePreviousSelection()
+    {
+        var first = new StorageDevice("E:\\", "FIRST", "E:\\", "E:\\");
+        var second = new StorageDevice("F:\\", "SECOND", "F:\\", "F:\\");
+        var state = new DeviceState();
+        state.Apply([first]);
+        state.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(DeviceState.Devices)) state.Selected = first;
+        };
+
+        Assert.True(state.Apply([first, second]));
+
+        Assert.Equal(second, state.Selected);
     }
 
     [Fact]

@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -16,10 +15,13 @@ public partial class MainWindow : Window, IDisposable
     private readonly AppearanceService _appearance;
     private readonly DeviceMonitor _monitor = new();
     private readonly StorageService _storage = new();
+    private readonly DeviceOpenGuard _openGuard = new();
     private readonly DeviceState _state = new();
     private readonly EventRefresh _refresh;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly bool _acrylicAtStartup;
+    private bool _systemBackdrop;
+    private bool _monitoringStarted;
     private bool _disposed;
     public event EventHandler? SettingsRequested;
 
@@ -29,6 +31,11 @@ public partial class MainWindow : Window, IDisposable
         InitializeComponent();
         _acrylicAtStartup = OperatingSystem.IsWindows() && Program.StartupSettings.UseAcrylic;
         ApplyWindowEffects();
+        ActualThemeVariantChanged += (_, _) => ApplyCardBackground();
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == ActualTransparencyLevelProperty) ApplyCardBackground();
+        };
         DataContext = _state;
         _refresh = new EventRefresh(ScanAsync);
         Topmost = appearance.Settings.AlwaysOnTop;
@@ -38,12 +45,21 @@ public partial class MainWindow : Window, IDisposable
         Opened += (_, _) =>
         {
             PositionBottomRight();
-            _monitor.Start(this);
-            _refresh.Request(false);
+            ApplyWindowEffects();
+            ApplyWindowShape();
             LowerIfNeeded();
             AppLog.Write($"Window ready: position={Position}, scale={RenderScaling}, bounds={Bounds}");
         };
-        SizeChanged += (_, _) => PositionBottomRight();
+        SizeChanged += (_, _) =>
+        {
+            PositionBottomRight();
+            ApplyWindowShape();
+        };
+        ScalingChanged += (_, _) =>
+        {
+            PositionBottomRight();
+            ApplyWindowShape();
+        };
         Screens.Changed += ScreensChanged;
         Deactivated += (_, _) => LowerIfNeeded();
         Closing += (_, e) =>
@@ -56,9 +72,15 @@ public partial class MainWindow : Window, IDisposable
         };
     }
 
-    public void ShowCard(bool activate = false)
+    public void ShowCard(bool activate = false, bool refresh = true)
     {
         if (_disposed) return;
+        if (refresh) RefreshDevices();
+        if (!_state.HasDevice)
+        {
+            Hide();
+            return;
+        }
         if (WindowState == WindowState.Minimized)
             WindowState = WindowState.Normal;
         Show();
@@ -73,6 +95,30 @@ public partial class MainWindow : Window, IDisposable
 
     public void RefreshDevices() => _refresh.Request(false);
 
+    public void StartMonitoring()
+    {
+        if (_disposed || _monitoringStarted) return;
+        _monitoringStarted = true;
+        // Keep listening on the hidden native window so insertion can reveal the panel.
+        _monitor.Start(this);
+        RefreshDevices();
+    }
+
+    private void ApplyDeviceSnapshot(IReadOnlyList<StorageDevice> devices)
+    {
+        var inserted = _state.Apply(devices);
+        if (!_state.HasDevice)
+        {
+            _state.Message = "";
+            Hide();
+        }
+        else if (inserted)
+        {
+            _state.Message = "";
+            ShowCard(true, refresh: false);
+        }
+    }
+
     private async Task ScanAsync(CancellationToken token)
     {
         try
@@ -82,7 +128,7 @@ public partial class MainWindow : Window, IDisposable
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (_disposed || token.IsCancellationRequested) return;
-                if (_state.Apply(devices)) ShowCard(true);
+                ApplyDeviceSnapshot(devices);
             });
         }
         catch (OperationCanceledException) { }
@@ -101,10 +147,15 @@ public partial class MainWindow : Window, IDisposable
 
     private void SettingsClick(object? sender, RoutedEventArgs e) => SettingsRequested?.Invoke(this, EventArgs.Empty);
 
-    private void OpenClick(object? sender, RoutedEventArgs e)
+    private async void OpenClick(object? sender, RoutedEventArgs e)
     {
         if (!_state.CanOpen || _state.Selected is not { } device) return;
-        try { _storage.Open(device); _state.Message = ""; }
+        try
+        {
+            if (await _openGuard.TryOpenAsync(device.Id, () => _storage.OpenAsync(device, _lifetime.Token)) && !_disposed)
+                _state.Message = "";
+        }
+        catch (OperationCanceledException) { }
         catch (Exception ex) { _state.Message = "打开失败：" + ex.Message; AppLog.Write("Open failed", ex); }
     }
 
@@ -140,10 +191,78 @@ public partial class MainWindow : Window, IDisposable
 
     private void ApplyWindowEffects()
     {
-        if (!_acrylicAtStartup) return;
-        TransparencyLevelHint = [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Transparent];
-        var dark = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
-        RootCard.Background = new SolidColorBrush(Color.Parse(dark ? "#D9262626" : "#E6F7F7F7"));
+        if (_acrylicAtStartup)
+        {
+            if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621))
+            {
+                TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
+                _systemBackdrop = TryApplySystemBackdrop();
+            }
+            if (!_systemBackdrop)
+                TransparencyLevelHint = [WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur,
+                    WindowTransparencyLevel.Transparent];
+        }
+        ApplyCardBackground();
+    }
+
+    private void ApplyCardBackground()
+    {
+        var dark = ActualThemeVariant == ThemeVariant.Dark;
+        var solid = new SolidColorBrush(Color.Parse(dark ? "#202020" : "#F3F3F3"));
+        TransparencyBackgroundFallback = solid;
+        if (_systemBackdrop)
+        {
+            // DWM supplies Windows 11's own tint, luminosity, noise and transparency policy.
+            RootCard.Background = Brushes.Transparent;
+            TryApplySystemBackdrop();
+            return;
+        }
+        var blurred = ActualTransparencyLevel == WindowTransparencyLevel.AcrylicBlur ||
+            ActualTransparencyLevel == WindowTransparencyLevel.Blur;
+        RootCard.Background = _acrylicAtStartup && blurred
+            ? new SolidColorBrush(Color.Parse(dark ? "#B3202020" : "#CCF3F3F3"))
+            : solid;
+    }
+
+    private bool TryApplySystemBackdrop()
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621) ||
+            TryGetPlatformHandle() is not { } handle) return false;
+        const int useImmersiveDarkMode = 20, systemBackdropType = 38, useHostBackdropBrush = 17;
+        var dark = ActualThemeVariant == ThemeVariant.Dark ? 1 : 0;
+        var backdrop = 3; // DWMSBT_TRANSIENTWINDOW: Windows 11 Desktop Acrylic.
+        if (DwmSetWindowAttribute(handle.Handle, systemBackdropType, ref backdrop, sizeof(int)) != 0)
+            return false;
+        DwmSetWindowAttribute(handle.Handle, useImmersiveDarkMode, ref dark, sizeof(int));
+        var hostBackdrop = 0;
+        DwmSetWindowAttribute(handle.Handle, useHostBackdropBrush, ref hostBackdrop, sizeof(int));
+        var margins = new FrameMargins { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+        if (DwmExtendFrameIntoClientArea(handle.Handle, ref margins) == 0) return true;
+        backdrop = 1; // Remove the system backdrop before falling back to Avalonia's blur.
+        DwmSetWindowAttribute(handle.Handle, systemBackdropType, ref backdrop, sizeof(int));
+        return false;
+    }
+
+    private void ApplyWindowShape()
+    {
+        if (!OperatingSystem.IsWindows() || TryGetPlatformHandle() is not { } handle ||
+            ClientSize.Width <= 0 || ClientSize.Height <= 0) return;
+        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        {
+            var round = 2; // DWMWCP_ROUND; keep DWM's antialiased corners and shadow.
+            if (DwmSetWindowAttribute(handle.Handle, 33, ref round, sizeof(int)) == 0)
+            {
+                if (_systemBackdrop) TryApplySystemBackdrop();
+                return;
+            }
+        }
+        var width = (int)Math.Ceiling(ClientSize.Width * RenderScaling);
+        var height = (int)Math.Ceiling(ClientSize.Height * RenderScaling);
+        var diameter = (int)Math.Round(RootCard.CornerRadius.TopLeft * 2 * RenderScaling);
+        // Native blur fills the HWND, so clip that too, including the rounded corners.
+        var region = CreateRoundRectRgn(0, 0, width + 1, height + 1, diameter, diameter);
+        if (region != IntPtr.Zero && SetWindowRgn(handle.Handle, region, true) == 0)
+            DeleteObject(region); // On success Windows owns the region.
     }
 
     private void ScreensChanged(object? sender, EventArgs e) => PositionBottomRight();
@@ -156,7 +275,7 @@ public partial class MainWindow : Window, IDisposable
         var scale = screen.Scaling;
         MaxWidth = Math.Max(200, work.Width / scale - 24);
         var width = (int)Math.Ceiling((Bounds.Width > 0 ? Bounds.Width : Width) * scale);
-        var height = (int)Math.Ceiling((Bounds.Height > 0 ? Bounds.Height : 188) * scale);
+        var height = (int)Math.Ceiling((Bounds.Height > 0 ? Bounds.Height : 106) * scale);
         var gap = (int)Math.Round(8 * scale);
         Position = new PixelPoint(Math.Max(work.X, work.Right - width - gap),
             Math.Max(work.Y, work.Bottom - height - gap));
@@ -184,4 +303,19 @@ public partial class MainWindow : Window, IDisposable
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FrameMargins { public int Left, Right, Top, Bottom; }
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref FrameMargins margins);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
+    [DllImport("user32.dll")]
+    private static extern int SetWindowRgn(IntPtr hwnd, IntPtr region, [MarshalAs(UnmanagedType.Bool)] bool redraw);
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeleteObject(IntPtr obj);
 }

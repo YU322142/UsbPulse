@@ -29,4 +29,37 @@ public sealed class LinuxStorageTests
         Assert.Equal("USB DATA", device.Label);
         Assert.Equal("/run/media/me/USB DATA", device.MountPath);
     }
+
+    [Theory]
+    [InlineData("400", "1000", 1000L, 400L)]
+    [InlineData("0", "1000", 1000L, 0L)]
+    [InlineData("null", "null", 1100L, null)]
+    [InlineData("\"400\"", "\"1000\"", 1000L, 400L)]
+    public void ParseLinux_ReadsAvailableAndFileSystemCapacity(string freeJson, string sizeJson,
+        long expectedSize, long? expectedFree)
+    {
+        var json = $$"""
+        {"blockdevices":[{"path":"/dev/sdb1","label":"USB","type":"part","rm":true,
+          "tran":"usb","mountpoints":["/media/USB"],"size":1100,
+          "fssize":{{sizeJson}},"fsavail":{{freeJson}}}]}
+        """;
+
+        var device = Assert.Single(StorageService.ParseLinux(json));
+
+        Assert.Equal(expectedSize, device.Size);
+        Assert.Equal(expectedFree, device.FreeSpace);
+    }
+
+    [Fact]
+    public void ParseLinux_UnmountedDeviceHasNoAvailableSpaceReading()
+    {
+        const string json = """
+        {"blockdevices":[{"path":"/dev/sdb1","label":"USB","type":"part","rm":true,
+          "tran":"usb","mountpoints":[null],"size":1000,"fsavail":0}]}
+        """;
+
+        var device = Assert.Single(StorageService.ParseLinux(json));
+
+        Assert.Null(device.AvailableBytes);
+    }
 }

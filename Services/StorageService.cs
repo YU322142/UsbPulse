@@ -14,7 +14,8 @@ public sealed class StorageService
         if (OperatingSystem.IsLinux())
         {
             var json = await ProcessRunner.RunAsync("lsblk",
-                ["--json", "--bytes", "--paths", "--output", "PATH,LABEL,TYPE,RM,TRAN,MOUNTPOINTS,SIZE"], token);
+                ["--json", "--bytes", "--paths", "--tree", "--output",
+                    "PATH,LABEL,TYPE,RM,TRAN,MOUNTPOINTS,SIZE,FSSIZE,FSAVAIL"], token);
             return ParseLinux(json);
         }
         return await Task.Run<IReadOnlyList<StorageDevice>>(() =>
@@ -28,8 +29,11 @@ public sealed class StorageService
                     var external = drive.DriveType == DriveType.Removable ||
                         (OperatingSystem.IsWindows() && drive.DriveType == DriveType.Fixed && IsUsb(drive.Name));
                     if (!external || !drive.IsReady) continue;
+                    long? available = null;
+                    try { available = drive.AvailableFreeSpace; }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
                     list.Add(new StorageDevice(drive.Name, string.IsNullOrWhiteSpace(drive.VolumeLabel)
-                        ? "可移动磁盘" : drive.VolumeLabel, drive.Name, drive.Name, drive.TotalSize));
+                        ? "可移动磁盘" : drive.VolumeLabel, drive.Name, drive.Name, drive.TotalSize, available));
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
             }
@@ -62,8 +66,12 @@ public sealed class StorageService
             {
                 var label = Text(node, "label");
                 _ = long.TryParse(Text(node, "size"), out var size);
+                if (long.TryParse(Text(node, "fssize"), out var fileSystemSize) && fileSystemSize > 0)
+                    size = fileSystemSize;
+                long? available = mounts.Length > 0 && long.TryParse(Text(node, "fsavail"), out var free) && free >= 0
+                    ? free : null;
                 result.Add(new(path, string.IsNullOrWhiteSpace(label) ? Path.GetFileName(path) : label,
-                    mounts.FirstOrDefault() ?? "", parent, size));
+                    mounts.FirstOrDefault() ?? "", parent, size, available));
             }
             if (hasChildren)
                 foreach (var child in children.EnumerateArray()) Visit(child, external, parent);
@@ -73,17 +81,20 @@ public sealed class StorageService
     private static string Text(JsonElement node, string key) =>
         node.TryGetProperty(key, out var value) && value.ValueKind != JsonValueKind.Null ? value.ToString() : "";
 
-    public void Open(StorageDevice device)
+    public Task<bool> OpenAsync(StorageDevice device, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
         if (device.MountPath.Length == 0) throw new IOException("设备尚未挂载，请在系统文件管理器中挂载。");
+        if (OperatingSystem.IsWindows()) return WindowsFolderLauncher.OpenAsync(device.MountPath, token);
         var info = new ProcessStartInfo
         {
-            FileName = OperatingSystem.IsWindows() ? "explorer.exe" : OperatingSystem.IsMacOS() ? "open" : "xdg-open",
+            FileName = OperatingSystem.IsMacOS() ? "open" : "xdg-open",
             UseShellExecute = false,
             CreateNoWindow = true
         };
         info.ArgumentList.Add(device.MountPath);
         Process.Start(info)?.Dispose();
+        return Task.FromResult(false);
     }
 
     public async Task EjectAsync(StorageDevice device, CancellationToken token)

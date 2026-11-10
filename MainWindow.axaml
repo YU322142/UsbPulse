@@ -4,68 +4,76 @@
         xmlns:fa="using:FluentAvalonia.UI.Controls"
         xmlns:models="using:UsbPulse.Models"
         x:DataType="models:DeviceState"
-        Title="UsbPulse" Width="430" SizeToContent="Height"
+        Title="UsbPulse" Width="344" SizeToContent="Height"
         CanResize="False" ShowInTaskbar="False" ShowActivated="False"
         SystemDecorations="None" Topmost="False"
         TransparencyLevelHint="Transparent" Background="Transparent">
-  <Border x:Name="RootCard" Margin="8" Padding="16,14,16,8" CornerRadius="8"
-          Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+  <Window.ContextMenu>
+    <ContextMenu>
+      <MenuItem Header="外观设置" Click="SettingsClick" />
+      <MenuItem Header="刷新设备" Click="RefreshClick" />
+    </ContextMenu>
+  </Window.ContextMenu>
+  <Window.Styles>
+    <Style Selector="ProgressBar.space-usage.nearly-full">
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+    </Style>
+  </Window.Styles>
+  <Border x:Name="RootCard" Padding="12,10,12,8" CornerRadius="8"
           BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}" BorderThickness="1">
-    <StackPanel Spacing="10">
-      <Grid ColumnDefinitions="48,*,34,34" ColumnSpacing="6">
-        <Border Width="44" Height="50" CornerRadius="6"
-                Background="{DynamicResource UsbAccentSoftBrush}" VerticalAlignment="Center">
-          <fa:SymbolIcon Symbol="MapDrive" FontSize="30" Foreground="{DynamicResource UsbAccentBrush}"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" />
-        </Border>
-        <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-          <TextBlock Text="{Binding Heading}" FontSize="13"
-                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-          <TextBlock Text="{Binding Detail}" FontSize="17" FontWeight="SemiBold"
-                     TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Detail}" />
-          <TextBlock Text="{Binding Capacity}" FontSize="11"
-                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-        </StackPanel>
-        <Button Grid.Column="2" Classes="tool" Click="RefreshClick" IsEnabled="{Binding !Busy}"
-                ToolTip.Tip="刷新设备" AutomationProperties.Name="刷新设备" VerticalAlignment="Top">
-          <fa:SymbolIcon Symbol="Refresh" FontSize="18" />
+    <StackPanel Spacing="8">
+      <Grid ColumnDefinitions="*,Auto,28,28" ColumnSpacing="6">
+        <TextBlock x:Name="DeviceNameText" Text="{Binding Detail}" FontSize="13" FontWeight="SemiBold"
+                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Detail}" VerticalAlignment="Center" />
+        <TextBlock x:Name="CapacityText" Grid.Column="1" Text="{Binding Capacity}"
+                   FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <Button x:Name="RefreshButton" Grid.Column="2" Classes="tool" Click="RefreshClick"
+                Width="28" Height="28" IsEnabled="{Binding !Busy}" VerticalAlignment="Center"
+                ToolTip.Tip="刷新设备" AutomationProperties.Name="刷新设备">
+          <fa:SymbolIcon Symbol="Refresh" FontSize="16" />
         </Button>
-        <Button Grid.Column="3" Classes="tool" Click="SettingsClick"
-                ToolTip.Tip="外观设置" AutomationProperties.Name="外观设置" VerticalAlignment="Top">
-          <fa:SymbolIcon Symbol="Settings" FontSize="18" />
+        <Button x:Name="SettingsButton" Grid.Column="3" Classes="tool" Click="SettingsClick"
+                Width="28" Height="28" VerticalAlignment="Center"
+                ToolTip.Tip="外观设置" AutomationProperties.Name="外观设置">
+          <fa:SymbolIcon Symbol="Settings" FontSize="16" />
         </Button>
       </Grid>
-      <ComboBox ItemsSource="{Binding Devices}" SelectedItem="{Binding Selected, Mode=TwoWay}"
+      <ComboBox x:Name="DevicePicker" ItemsSource="{Binding Devices}" SelectedItem="{Binding Selected, Mode=TwoWay}"
                 IsVisible="{Binding HasMultiple}" IsEnabled="{Binding !Busy}" HorizontalAlignment="Stretch"
-                AutomationProperties.Name="选择存储设备">
+                MinHeight="30" Padding="8,4" FontSize="12" AutomationProperties.Name="选择存储设备">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="models:StorageDevice">
             <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
-      <fa:InfoBar IsOpen="{Binding HasMessage}" IsClosable="False" Severity="Warning"
-                  Message="{Binding Message}" />
-      <Grid Height="2">
-        <Border Background="{DynamicResource UsbAccentBrush}" />
-        <ProgressBar IsVisible="{Binding Busy}" IsIndeterminate="True"
-                     Foreground="{DynamicResource UsbAccentBrush}" />
-      </Grid>
-      <Grid ColumnDefinitions="*,1,*" Height="42">
+      <Border IsVisible="{Binding HasMessage}" Padding="8,6" CornerRadius="4"
+              Background="{DynamicResource UsbAccentSoftBrush}">
+        <TextBlock Text="{Binding Message}" FontSize="12" TextWrapping="Wrap" />
+      </Border>
+      <Border IsVisible="{Binding HasUsage}" Height="6" CornerRadius="3"
+              Background="{DynamicResource UsbAccentSoftBrush}">
+        <ProgressBar x:Name="SpaceUsage" Classes="space-usage" Classes.nearly-full="{Binding IsNearlyFull}"
+                     IsVisible="{Binding HasUsage}" Minimum="0" Maximum="100" Value="{Binding UsedPercentage}"
+                     Height="6" MinHeight="0" CornerRadius="3" BorderThickness="0" Padding="0"
+                     Background="Transparent" ToolTip.Tip="{Binding UsageDescription}"
+                     AutomationProperties.Name="空间占用" AutomationProperties.HelpText="{Binding UsageDescription}" />
+      </Border>
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Height="36">
         <Button Grid.Column="0" Click="EjectClick" IsEnabled="{Binding CanEject}"
-                HorizontalAlignment="Stretch" Background="Transparent" BorderThickness="0">
-          <StackPanel Orientation="Horizontal" Spacing="9">
-            <PathIcon Width="20" Height="20" VerticalAlignment="Center"
+                HorizontalAlignment="Stretch" Background="Transparent" BorderThickness="0" CornerRadius="5">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <PathIcon Width="16" Height="16" VerticalAlignment="Center"
                       Data="M3,19 L21,19 L21,17 L3,17 Z M12,2 L5.5,12 L9.5,12 L9.5,15 L14.5,15 L14.5,12 L18.5,12 Z" />
-            <TextBlock Text="弹出" FontSize="16" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding EjectLabel}" FontSize="13" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
-        <Border Grid.Column="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="0,6" />
-        <Button Grid.Column="2" Click="OpenClick" IsEnabled="{Binding CanOpen}"
-                HorizontalAlignment="Stretch" Background="Transparent" BorderThickness="0">
-          <StackPanel Orientation="Horizontal" Spacing="9">
-            <fa:SymbolIcon Symbol="OpenFolder" FontSize="20" VerticalAlignment="Center" />
-            <TextBlock Text="打开" FontSize="16" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Click="OpenClick" IsEnabled="{Binding CanOpen}"
+                HorizontalAlignment="Stretch" Background="{DynamicResource UsbAccentSoftBrush}"
+                BorderThickness="0" CornerRadius="5">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <fa:SymbolIcon Symbol="OpenFolder" FontSize="16" VerticalAlignment="Center" />
+            <TextBlock Text="打开" FontSize="13" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
       </Grid>

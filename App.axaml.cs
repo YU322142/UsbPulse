@@ -25,7 +25,8 @@ public partial class App : Application
             _appearance.Apply();
             _mainWindow = new MainWindow(_appearance);
             _mainWindow.SettingsRequested += (_, _) => ShowSettings();
-            desktop.MainWindow = _mainWindow;
+            // The desktop lifetime shows MainWindow at startup, so assign it only after a device reveals it.
+            _mainWindow.Opened += (_, _) => desktop.MainWindow = _mainWindow;
             // An unavailable system tray must not prevent the panel from opening.
             try { CreateTray(desktop); }
             catch (Exception ex) { AppLog.Write("Tray initialization failed", ex); }
@@ -35,8 +36,8 @@ public partial class App : Application
                 _trayIcon?.Dispose();
                 AppLog.Write("Shutdown");
             };
-            _mainWindow.Show();
-            AppLog.Write("Main window shown; version 0.2.0");
+            _mainWindow.StartMonitoring();
+            AppLog.Write("Monitoring storage; panel stays hidden until a device is available; version 0.2.0");
         }
         base.OnFrameworkInitializationCompleted();
     }

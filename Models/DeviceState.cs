@@ -1,11 +1,23 @@
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 
 namespace UsbPulse.Models;
 
-public sealed record StorageDevice(string Id, string Label, string MountPath, string DiskPath, long Size = 0)
+public sealed record StorageDevice(string Id, string Label, string MountPath, string DiskPath,
+    long Size = 0, long? FreeSpace = null)
 {
     public string DisplayName => $"{Label} ({(OperatingSystem.IsWindows() ? MountPath.TrimEnd('\\') : Id)})";
+    public long? AvailableBytes => Size > 0 && FreeSpace is >= 0 ? Math.Min(FreeSpace.Value, Size) : null;
+    public long? UsedBytes => AvailableBytes is { } free ? Size - free : null;
+    public double UsedPercentage => UsedBytes is { } used ? (double)used / Size * 100 : 0;
+
+    public static string FormatSize(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB", "PB", "EB"];
+        var value = (double)Math.Max(0, bytes);
+        var unit = 0;
+        while (value >= 1024 && unit < units.Length - 1) { value /= 1024; unit++; }
+        return $"{value:0.#} {units[unit]}";
+    }
 }
 
 public sealed class DeviceState : INotifyPropertyChanged
@@ -13,6 +25,7 @@ public sealed class DeviceState : INotifyPropertyChanged
     private IReadOnlyList<StorageDevice> _devices = [];
     private StorageDevice? _selected;
     private bool _busy;
+    private bool _applyingSnapshot;
     private string _message = "";
     public event PropertyChangedEventHandler? PropertyChanged;
     public IReadOnlyList<StorageDevice> Devices => _devices;
@@ -21,7 +34,7 @@ public sealed class DeviceState : INotifyPropertyChanged
         get => _selected;
         set
         {
-            if (_selected == value) return;
+            if (_applyingSnapshot || _selected == value) return;
             _selected = value;
             NotifyAll();
         }
@@ -41,24 +54,34 @@ public sealed class DeviceState : INotifyPropertyChanged
     public bool HasMultiple => Devices.Count > 1;
     public bool CanEject => HasDevice && !Busy;
     public bool CanOpen => HasDevice && !Busy && Selected!.MountPath.Length > 0;
-    public string Heading => Busy ? "正在处理设备" : Devices.Count switch
-    {
-        0 => "等待设备接入",
-        1 => "存储设备已连接",
-        _ => $"已连接 {Devices.Count} 个存储设备"
-    };
-    public string Detail => Selected?.DisplayName ?? "暂无可移动存储设备";
-    public string Capacity => Selected is null ? "UsbPulse" : Selected.MountPath.Length == 0
-        ? "尚未挂载" : Selected.Size > 0 ? $"{Selected.Size / 1073741824d:0.#} GB" : "已就绪";
+    public string Detail => Selected?.DisplayName ?? "";
+    public string Capacity => Selected is not { } device ? "" : device.Size <= 0 ? "容量未知"
+        : device.AvailableBytes is { } free
+            ? $"可用 {StorageDevice.FormatSize(free)} / {StorageDevice.FormatSize(device.Size)}"
+            : $"总计 {StorageDevice.FormatSize(device.Size)}";
+    public bool HasUsage => Selected?.AvailableBytes is not null;
+    public double UsedPercentage => Selected?.UsedPercentage ?? 0;
+    public bool IsNearlyFull => HasUsage && UsedPercentage >= 90;
+    public string UsageDescription => Selected?.UsedBytes is { } used
+        ? $"已用 {StorageDevice.FormatSize(used)}（{UsedPercentage:0.#}%），{Capacity}"
+        : Capacity;
+    public string EjectLabel => Busy ? "弹出中…" : "弹出";
 
     public bool Apply(IReadOnlyList<StorageDevice> devices)
     {
         var inserted = devices.FirstOrDefault(d => !_devices.Any(old => old.Id == d.Id));
         var selected = inserted ?? devices.FirstOrDefault(d => d.Id == Selected?.Id) ?? devices.FirstOrDefault();
         var changed = _selected != selected || !_devices.SequenceEqual(devices);
-        _selected = selected;
         _devices = devices;
-        if (changed) NotifyAll();
+        if (changed)
+        {
+            // Replacing ComboBox.ItemsSource can send its old selection back during notification.
+            _applyingSnapshot = true;
+            try { PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Devices))); }
+            finally { _applyingSnapshot = false; }
+            _selected = selected;
+            NotifyAll();
+        }
         return inserted is not null;
     }
 
