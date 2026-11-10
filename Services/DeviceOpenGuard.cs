@@ -1,15 +1,14 @@
 namespace UsbPulse.Services;
 
-/// <summary>Coalesces pending launches, with a three-second fallback when window detection is unavailable.</summary>
+/// <summary>Opens immediately, then ignores repeats until the same device has been idle for five seconds.</summary>
 public sealed class DeviceOpenGuard(TimeProvider? timeProvider = null)
 {
-    private static readonly TimeSpan RepeatDelay = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan RepeatDelay = TimeSpan.FromSeconds(5);
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
     private readonly Dictionary<string, OpenAttempt> _attempts = new(StringComparer.Ordinal);
     private readonly object _gate = new();
 
-    // The callback returns true when the target window has been confirmed and can be reused.
-    public async Task<bool> TryOpenAsync(string deviceId, Func<Task<bool>> open)
+    public async Task<bool> TryOpenAsync(string deviceId, Func<Task> open)
     {
         OpenAttempt attempt;
         lock (_gate)
@@ -27,12 +26,9 @@ public sealed class DeviceOpenGuard(TimeProvider? timeProvider = null)
 
         try
         {
-            var confirmed = await open().ConfigureAwait(false);
-            lock (_gate)
-            {
-                if (confirmed) _attempts.Remove(deviceId);
-                else attempt.Pending = false;
-            }
+            await open().ConfigureAwait(false);
+            // Completing the launch must not release the repeat-click protection early.
+            lock (_gate) attempt.Pending = false;
             return true;
         }
         catch

@@ -37,7 +37,7 @@ public partial class App : Application
                 AppLog.Write("Shutdown");
             };
             _mainWindow.StartMonitoring();
-            AppLog.Write("Monitoring storage; panel stays hidden until a device is available; version 0.2.0");
+            AppLog.Write("Monitoring storage; panel stays hidden until a device is available; version 0.2.1");
         }
         base.OnFrameworkInitializationCompleted();
     }

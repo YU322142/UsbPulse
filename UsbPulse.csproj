@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets\UsbPulse.ico</ApplicationIcon>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
     <Authors>UsbPulse contributors</Authors>
     <Description>Cross-platform removable storage notification and safe eject utility.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

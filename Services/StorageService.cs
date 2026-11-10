@@ -81,20 +81,19 @@ public sealed class StorageService
     private static string Text(JsonElement node, string key) =>
         node.TryGetProperty(key, out var value) && value.ValueKind != JsonValueKind.Null ? value.ToString() : "";
 
-    public Task<bool> OpenAsync(StorageDevice device, CancellationToken token)
+    public Task OpenAsync(StorageDevice device, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         if (device.MountPath.Length == 0) throw new IOException("设备尚未挂载，请在系统文件管理器中挂载。");
-        if (OperatingSystem.IsWindows()) return WindowsFolderLauncher.OpenAsync(device.MountPath, token);
         var info = new ProcessStartInfo
         {
-            FileName = OperatingSystem.IsMacOS() ? "open" : "xdg-open",
+            FileName = OperatingSystem.IsWindows() ? "explorer.exe" : OperatingSystem.IsMacOS() ? "open" : "xdg-open",
             UseShellExecute = false,
             CreateNoWindow = true
         };
         info.ArgumentList.Add(device.MountPath);
-        Process.Start(info)?.Dispose();
-        return Task.FromResult(false);
+        using var process = Process.Start(info) ?? throw new IOException("无法启动文件管理器。");
+        return Task.CompletedTask;
     }
 
     public async Task EjectAsync(StorageDevice device, CancellationToken token)

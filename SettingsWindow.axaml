@@ -40,6 +40,6 @@
       </fa:InfoBar.ActionButton>
     </fa:InfoBar>
     <fa:InfoBar x:Name="SettingsError" IsOpen="False" IsClosable="True" Severity="Error" />
-    <TextBlock Text="UsbPulse 0.2.0" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+    <TextBlock Text="UsbPulse 0.2.1" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
   </StackPanel>
 </Window>
