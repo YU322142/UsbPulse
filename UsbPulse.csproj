@@ -32,6 +32,8 @@
   <ItemGroup>
     <None Update="LICENSE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <None Update="README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <None Update="AI_DISCLOSURE.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <None Update="docs/images/*.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <None Update="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
   </ItemGroup>
 </Project>
