@@ -37,7 +37,7 @@ public partial class App : Application
                 AppLog.Write("Shutdown");
             };
             _mainWindow.StartMonitoring();
-            AppLog.Write("Monitoring storage; panel stays hidden until a device is available; version 0.2.1");
+            AppLog.Write("Monitoring storage; panel stays hidden until a device is available; version 0.2.2");
         }
         base.OnFrameworkInitializationCompleted();
     }
@@ -46,7 +46,7 @@ public partial class App : Application
     {
         var menu = new NativeMenu();
         Add(menu, "显示设备面板", () => _mainWindow?.ShowCard(true));
-        Add(menu, "外观设置", ShowSettings);
+        Add(menu, "设置", ShowSettings);
         Add(menu, "刷新设备", () => _mainWindow?.RefreshDevices());
         menu.Items.Add(new NativeMenuItemSeparator());
         Add(menu, "退出 UsbPulse", () => desktop.Shutdown());

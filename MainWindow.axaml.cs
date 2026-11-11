@@ -29,6 +29,7 @@ public partial class MainWindow : Window, IDisposable
     {
         _appearance = appearance;
         InitializeComponent();
+        ApplyBehaviorSettings();
         _acrylicAtStartup = OperatingSystem.IsWindows() && Program.StartupSettings.UseAcrylic;
         ApplyWindowEffects();
         ActualThemeVariantChanged += (_, _) => ApplyCardBackground();
@@ -184,9 +185,21 @@ public partial class MainWindow : Window, IDisposable
 
     private void AppearanceChanged(object? sender, EventArgs e)
     {
+        ApplyBehaviorSettings();
         Topmost = _appearance.Settings.AlwaysOnTop;
         ApplyWindowEffects();
         LowerIfNeeded();
+    }
+
+    private void ApplyBehaviorSettings()
+    {
+        var settings = _appearance.Settings;
+        _openGuard.SetRepeatDelay(TimeSpan.FromSeconds(settings.OpenRepeatDelaySeconds));
+        var scale = settings.WindowScalePercent / 100d;
+        CardScale.LayoutTransform = new ScaleTransform(scale, scale);
+        // Keep the card's outside radius aligned with the system window corners.
+        RootCard.CornerRadius = new CornerRadius(8 / scale);
+        Width = 344 * scale;
     }
 
     private void ApplyWindowEffects()
@@ -258,7 +271,8 @@ public partial class MainWindow : Window, IDisposable
         }
         var width = (int)Math.Ceiling(ClientSize.Width * RenderScaling);
         var height = (int)Math.Ceiling(ClientSize.Height * RenderScaling);
-        var diameter = (int)Math.Round(RootCard.CornerRadius.TopLeft * 2 * RenderScaling);
+        var diameter = (int)Math.Round(RootCard.CornerRadius.TopLeft *
+            (_appearance.Settings.WindowScalePercent / 100d) * 2 * RenderScaling);
         // Native blur fills the HWND, so clip that too, including the rounded corners.
         var region = CreateRoundRectRgn(0, 0, width + 1, height + 1, diameter, diameter);
         if (region != IntPtr.Zero && SetWindowRgn(handle.Handle, region, true) == 0)

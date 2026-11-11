@@ -1,12 +1,18 @@
 namespace UsbPulse.Services;
 
-/// <summary>Opens immediately, then ignores repeats until the same device has been idle for five seconds.</summary>
+/// <summary>Opens immediately, then ignores repeats until the same device has been idle for the configured interval.</summary>
 public sealed class DeviceOpenGuard(TimeProvider? timeProvider = null)
 {
-    private static readonly TimeSpan RepeatDelay = TimeSpan.FromSeconds(5);
+    private TimeSpan _repeatDelay = TimeSpan.FromSeconds(5);
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
     private readonly Dictionary<string, OpenAttempt> _attempts = new(StringComparer.Ordinal);
     private readonly object _gate = new();
+
+    public void SetRepeatDelay(TimeSpan delay)
+    {
+        if (delay <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(delay));
+        lock (_gate) _repeatDelay = delay;
+    }
 
     public async Task<bool> TryOpenAsync(string deviceId, Func<Task> open)
     {
@@ -16,7 +22,7 @@ public sealed class DeviceOpenGuard(TimeProvider? timeProvider = null)
             var now = _time.GetTimestamp();
             if (_attempts.TryGetValue(deviceId, out var previous))
             {
-                var repeated = previous.Pending || _time.GetElapsedTime(previous.LastAttempt, now) < RepeatDelay;
+                var repeated = previous.Pending || _time.GetElapsedTime(previous.LastAttempt, now) < _repeatDelay;
                 previous.LastAttempt = now;
                 if (repeated) return false;
             }

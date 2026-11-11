@@ -147,4 +147,48 @@ public sealed class DeviceOpenGuardTests
         public override long GetTimestamp() => Interlocked.Read(ref _timestamp);
         public void Advance(TimeSpan elapsed) => Interlocked.Add(ref _timestamp, elapsed.Ticks);
     }
+
+    [Theory]
+    [InlineData(1, 999, false)]
+    [InlineData(1, 1000, true)]
+    [InlineData(12, 11000, false)]
+    [InlineData(12, 12000, true)]
+    [InlineData(60, 59999, false)]
+    [InlineData(60, 60000, true)]
+    public async Task UsesTheConfiguredWait(int seconds, int elapsedMilliseconds, bool expected)
+    {
+        var time = new ManualTimeProvider();
+        var guard = new DeviceOpenGuard(time);
+        guard.SetRepeatDelay(TimeSpan.FromSeconds(seconds));
+        await guard.TryOpenAsync("E:", () => Task.CompletedTask);
+        time.Advance(TimeSpan.FromMilliseconds(elapsedMilliseconds));
+
+        Assert.Equal(expected, await guard.TryOpenAsync("E:", () => Task.CompletedTask));
+    }
+
+    [Fact]
+    public async Task ChangingTheWaitAppliesToTheCurrentProtectionInterval()
+    {
+        var time = new ManualTimeProvider();
+        var guard = new DeviceOpenGuard(time);
+        await guard.TryOpenAsync("E:", () => Task.CompletedTask);
+        time.Advance(TimeSpan.FromSeconds(4));
+        guard.SetRepeatDelay(TimeSpan.FromSeconds(10));
+        time.Advance(TimeSpan.FromSeconds(2));
+        Assert.False(await guard.TryOpenAsync("E:", () => Task.CompletedTask));
+        guard.SetRepeatDelay(TimeSpan.FromSeconds(2));
+        time.Advance(TimeSpan.FromSeconds(2));
+
+        Assert.True(await guard.TryOpenAsync("E:", () => Task.CompletedTask));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void RejectsNonpositiveWaits(int seconds)
+    {
+        var guard = new DeviceOpenGuard();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => guard.SetRepeatDelay(TimeSpan.FromSeconds(seconds)));
+    }
 }

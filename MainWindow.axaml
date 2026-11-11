@@ -10,7 +10,7 @@
         TransparencyLevelHint="Transparent" Background="Transparent">
   <Window.ContextMenu>
     <ContextMenu>
-      <MenuItem Header="外观设置" Click="SettingsClick" />
+      <MenuItem Header="设置" Click="SettingsClick" />
       <MenuItem Header="刷新设备" Click="RefreshClick" />
     </ContextMenu>
   </Window.ContextMenu>
@@ -19,6 +19,7 @@
       <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
     </Style>
   </Window.Styles>
+  <LayoutTransformControl x:Name="CardScale">
   <Border x:Name="RootCard" Padding="12,10,12,8" CornerRadius="8"
           BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}" BorderThickness="1">
     <StackPanel Spacing="8">
@@ -34,7 +35,7 @@
         </Button>
         <Button x:Name="SettingsButton" Grid.Column="3" Classes="tool" Click="SettingsClick"
                 Width="28" Height="28" VerticalAlignment="Center"
-                ToolTip.Tip="外观设置" AutomationProperties.Name="外观设置">
+                ToolTip.Tip="设置" AutomationProperties.Name="设置">
           <fa:SymbolIcon Symbol="Settings" FontSize="16" />
         </Button>
       </Grid>
@@ -79,4 +80,5 @@
       </Grid>
     </StackPanel>
   </Border>
+  </LayoutTransformControl>
 </Window>

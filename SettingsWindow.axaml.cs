@@ -19,11 +19,15 @@ public partial class SettingsWindow : Window
     {
         _appearance = appearance;
         InitializeComponent();
+        if (Screens.Primary is { } screen)
+            MaxHeight = Math.Max(260, screen.WorkingArea.Height / screen.Scaling - 32);
         ThemeBox.SelectedIndex = appearance.Settings.Theme switch { "Light" => 1, "Dark" => 2, _ => 0 };
         TopmostSwitch.IsChecked = appearance.Settings.AlwaysOnTop;
         WindowsEffectsPanel.IsVisible = OperatingSystem.IsWindows();
         AcrylicSwitch.IsChecked = appearance.Settings.UseAcrylic;
         HighRefreshSwitch.IsChecked = appearance.Settings.HighRefreshRate;
+        OpenDelayBox.Value = appearance.Settings.OpenRepeatDelaySeconds;
+        WindowScaleBox.Value = appearance.Settings.WindowScalePercent;
         foreach (var palette in AppearanceService.Palettes)
         {
             var content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 7 };
@@ -62,6 +66,16 @@ public partial class SettingsWindow : Window
         HighRefreshSwitch.IsCheckedChanged += (_, _) =>
         {
             if (!_initializing) Save(appearance.Settings with { HighRefreshRate = HighRefreshSwitch.IsChecked == true });
+        };
+        OpenDelayBox.ValueChanged += (_, _) =>
+        {
+            if (!_initializing && OpenDelayBox.Value is { } value)
+                Save(appearance.Settings with { OpenRepeatDelaySeconds = (int)decimal.Round(value) });
+        };
+        WindowScaleBox.ValueChanged += (_, _) =>
+        {
+            if (!_initializing && WindowScaleBox.Value is { } value)
+                Save(appearance.Settings with { WindowScalePercent = (int)decimal.Round(value) });
         };
         _initializing = false;
         UpdateRestartInfo();

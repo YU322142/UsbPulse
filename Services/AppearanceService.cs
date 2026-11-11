@@ -11,7 +11,9 @@ public sealed record AppearanceSettings(
     string Accent = "Ocean",
     bool AlwaysOnTop = false,
     bool UseAcrylic = false,
-    bool HighRefreshRate = false);
+    bool HighRefreshRate = false,
+    int OpenRepeatDelaySeconds = 5,
+    int WindowScalePercent = 100);
 public sealed record AccentPalette(string Id, string Name, string Light, string Dark);
 
 public sealed class AppearanceService
@@ -45,7 +47,9 @@ public sealed class AppearanceService
     public static AppearanceSettings Normalize(AppearanceSettings settings) => settings with
     {
         Theme = settings.Theme is "Light" or "Dark" or "System" ? settings.Theme : "System",
-        Accent = Palettes.Any(p => p.Id == settings.Accent) ? settings.Accent : "Ocean"
+        Accent = Palettes.Any(p => p.Id == settings.Accent) ? settings.Accent : "Ocean",
+        OpenRepeatDelaySeconds = Math.Clamp(settings.OpenRepeatDelaySeconds, 1, 60),
+        WindowScalePercent = Math.Clamp(settings.WindowScalePercent, 75, 200)
     };
 
     public void Update(AppearanceSettings settings)

@@ -1,12 +1,13 @@
 <Window x:Class="UsbPulse.SettingsWindow"
         xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:fa="using:FluentAvalonia.UI.Controls"
-        Title="UsbPulse · 外观设置" Width="440" SizeToContent="Height"
+        Title="UsbPulse · 设置" Width="440" SizeToContent="Height"
         CanResize="False" WindowStartupLocation="CenterScreen"
         Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
-  <StackPanel Margin="24,20" Spacing="20">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+  <StackPanel Margin="24,20" Spacing="18">
     <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
-      <TextBlock Text="外观" FontSize="22" FontWeight="SemiBold" />
+      <TextBlock Text="设置" FontSize="22" FontWeight="SemiBold" />
       <fa:SymbolIcon Grid.Column="1" Symbol="ColorFill" FontSize="24"
                      Foreground="{DynamicResource UsbAccentBrush}" />
     </Grid>
@@ -25,6 +26,25 @@
     <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
     <ToggleSwitch x:Name="TopmostSwitch" Content="窗口置顶" OnContent="开启" OffContent="关闭"
                   AutomationProperties.Name="窗口置顶" />
+    <StackPanel Spacing="12">
+      <TextBlock Text="操作与大小" FontWeight="SemiBold" />
+      <Grid ColumnDefinitions="*,110,Auto" ColumnSpacing="8">
+        <TextBlock Text="防连点等待时长" VerticalAlignment="Center" />
+        <NumericUpDown x:Name="OpenDelayBox" Grid.Column="1" Minimum="1" Maximum="60" Increment="1"
+                       FormatString="0" AutomationProperties.Name="防连点等待时长" />
+        <TextBlock Grid.Column="2" Text="秒" VerticalAlignment="Center" />
+      </Grid>
+      <TextBlock Text="首次点击立即打开，停止点击达到此时长后可再次打开。"
+                 FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+      <Grid ColumnDefinitions="*,110,Auto" ColumnSpacing="8">
+        <TextBlock Text="主面板缩放" VerticalAlignment="Center" />
+        <NumericUpDown x:Name="WindowScaleBox" Grid.Column="1" Minimum="75" Maximum="200" Increment="5"
+                       FormatString="0" AutomationProperties.Name="主面板缩放" />
+        <TextBlock Grid.Column="2" Text="%" VerticalAlignment="Center" />
+      </Grid>
+      <TextBlock Text="等待时长和缩放调整后立即生效，并自动保存。"
+                 FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+    </StackPanel>
     <StackPanel x:Name="WindowsEffectsPanel" Spacing="12">
       <Border Height="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
       <TextBlock Text="Windows 渲染" FontWeight="SemiBold" />
@@ -40,6 +60,7 @@
       </fa:InfoBar.ActionButton>
     </fa:InfoBar>
     <fa:InfoBar x:Name="SettingsError" IsOpen="False" IsClosable="True" Severity="Error" />
-    <TextBlock Text="UsbPulse 0.2.1" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+    <TextBlock Text="UsbPulse 0.2.2" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
   </StackPanel>
+  </ScrollViewer>
 </Window>
